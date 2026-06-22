@@ -5,18 +5,18 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: "#fffbeb",
-          100: "#fef3c7",
-          200: "#fde68a",
-          300: "#fcd34d",
-          400: "#fbbf24",
-          500: "#f59e0b",
-          600: "#d97706",
-          700: "#b45309",
-          800: "#92400e",
-          900: "#78350f",
-          950: "#603808",
-          DEFAULT: "#fbbf24",
+          50: "#fffef7",
+          100: "#fffde6",
+          200: "#fff9c4",
+          300: "#fff59d",
+          400: "#ffee58",
+          500: "#ffd700", // Pure gold (matches the logo + @theme)
+          600: "#fbc02d",
+          700: "#f9a825",
+          800: "#f57f17",
+          900: "#f57c00",
+          950: "#e65100",
+          DEFAULT: "#ffd700",
         },
         dark: {
           50: "#f9fafb",

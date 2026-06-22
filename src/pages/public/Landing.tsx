@@ -139,7 +139,7 @@ const LandingPage = () => {
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <motion.div
@@ -198,6 +198,8 @@ const LandingPage = () => {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               className="md:hidden text-primary-500 p-2"
             >
               {mobileMenuOpen ? (
@@ -251,7 +253,7 @@ const LandingPage = () => {
         className="relative min-h-[90vh] flex items-center justify-center"
         style={{ opacity }}
       >
-        <div className="container mx-auto px-6 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -269,7 +271,7 @@ const LandingPage = () => {
               </span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-display mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-display mb-6 leading-tight">
               <motion.span
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -289,7 +291,7 @@ const LandingPage = () => {
             </h1>
 
             <motion.p
-              className="text-xl md:text-2xl text-gray-500 mb-10 max-w-3xl mx-auto"
+              className="text-lg sm:text-xl md:text-2xl text-gray-500 mb-10 max-w-3xl mx-auto"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
@@ -306,7 +308,7 @@ const LandingPage = () => {
             >
               <button
                 onClick={() => smoothScrollTo("contact")}
-                className="btn-primary text-lg px-8 py-4 flex items-center justify-center space-x-2 group"
+                className="btn-primary w-full sm:w-auto text-lg px-8 py-4 flex items-center justify-center space-x-2 group"
               >
                 <span>Visit Us Today</span>
                 <motion.span
@@ -318,7 +320,7 @@ const LandingPage = () => {
               </button>
               <button
                 onClick={() => smoothScrollTo("pricing")}
-                className="btn-secondary text-lg px-8 py-4"
+                className="btn-secondary w-full sm:w-auto text-lg px-8 py-4"
               >
                 View Pricing
               </button>
@@ -329,7 +331,7 @@ const LandingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="grid grid-cols-3 gap-8 mt-20 max-w-2xl mx-auto"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mt-12 sm:mt-20 max-w-2xl mx-auto"
             >
               {[
                 { number: "500+", label: "Happy Members" },
@@ -338,7 +340,7 @@ const LandingPage = () => {
               ].map((stat, index) => (
                 <motion.div
                   key={index}
-                  className="text-center p-6 bg-gray-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl
+                  className="text-center p-4 sm:p-6 bg-gray-900/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl
                             relative overflow-hidden
                             before:absolute before:inset-0 before:rounded-2xl
                             before:bg-gradient-to-br before:from-white/[0.03] before:to-transparent
@@ -348,7 +350,7 @@ const LandingPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 + index * 0.1 }}
                 >
-                  <h3 className="text-4xl font-bold text-primary-500 relative z-10">
+                  <h3 className="text-3xl sm:text-4xl font-bold text-primary-500 relative z-10">
                     {stat.number}
                   </h3>
                   <p className="text-gray-500 relative z-10">{stat.label}</p>
@@ -360,8 +362,8 @@ const LandingPage = () => {
       </motion.section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 relative z-10">
-        <div className="container mx-auto px-6">
+      <section id="features" className="py-12 sm:py-20 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -369,10 +371,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-display mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display mb-4">
               WHY CHOOSE <span className="gradient-text">270°</span>
             </h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto">
               Experience fitness excellence with modern convenience
             </p>
           </motion.div>
@@ -416,8 +418,8 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 relative z-10">
-        <div className="container mx-auto px-6">
+      <section id="pricing" className="py-12 sm:py-20 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -425,10 +427,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-display mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display mb-4">
               CHOOSE YOUR <span className="gradient-text">PLAN</span>
             </h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto">
               Flexible options for every fitness journey
             </p>
           </motion.div>
@@ -492,8 +494,8 @@ const LandingPage = () => {
       </section>
 
       {/* Location Section */}
-      <section id="location" className="py-20 relative z-10">
-        <div className="container mx-auto px-6">
+      <section id="location" className="py-12 sm:py-20 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -530,8 +532,8 @@ const LandingPage = () => {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-20 relative overflow-hidden">
-        <div className="container mx-auto px-6 relative z-10">
+      <section id="contact" className="py-12 sm:py-20 relative overflow-hidden">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -550,20 +552,20 @@ const LandingPage = () => {
             >
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-500 to-transparent"></div>
 
-              <div className="relative z-10 p-12 md:p-16 text-center">
+              <div className="relative z-10 p-6 sm:p-12 md:p-16 text-center">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <h2 className="text-4xl md:text-5xl font-display mb-6">
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-display mb-6">
                     READY TO <span className="gradient-text">START</span>?
                   </h2>
                 </motion.div>
 
                 <motion.p
-                  className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto"
+                  className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
@@ -603,11 +605,11 @@ const LandingPage = () => {
                   transition={{ delay: 0.5 }}
                   viewport={{ once: true }}
                 >
-                  <button className="btn-primary text-lg px-10 py-4 inline-flex items-center space-x-3">
+                  <button className="btn-primary w-full sm:w-auto text-lg px-10 py-4 inline-flex items-center justify-center space-x-3">
                     <span>Get Day Pass ($15)</span>
                     <FaDumbbell />
                   </button>
-                  <button className="btn-secondary text-lg px-10 py-4">
+                  <button className="btn-secondary w-full sm:w-auto text-lg px-10 py-4">
                     Learn About Memberships
                   </button>
                 </motion.div>
@@ -622,7 +624,7 @@ const LandingPage = () => {
 
       {/* Footer */}
       <footer className="bg-gray-950/80 backdrop-blur-xl border-t border-white/[0.08] py-12 relative z-10">
-        <div className="container mx-auto px-6">
+        <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-3 mb-4 md:mb-0">
               <IoFitness className="w-8 h-8 text-primary-500" />

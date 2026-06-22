@@ -268,9 +268,9 @@ const Members = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display text-white">
+          <h1 className="text-2xl sm:text-3xl font-display text-white">
             Members Management
           </h1>
           <p className="text-gray-400">Manage gym members and memberships</p>
@@ -279,7 +279,7 @@ const Members = () => {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowCreateModal(true)}
-          className="relative z-10 flex items-center space-x-2 px-6 py-3 bg-primary-500 text-black font-bold rounded-lg hover:bg-primary-400 transition-all cursor-pointer select-none"
+          className="relative z-10 flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 bg-primary-500 text-black font-bold rounded-lg hover:bg-primary-400 transition-all cursor-pointer select-none"
           style={{ userSelect: "none" }}
         >
           <FaPlus className="pointer-events-none" />
@@ -288,7 +288,7 @@ const Members = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
         {[
           {
             label: "Total Members",
@@ -326,12 +326,14 @@ const Members = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="card-dark p-6"
+            className="card-dark p-4 sm:p-6"
           >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg bg-${stat.color}-500/20`}>
                 <stat.icon className={`text-${stat.color}-500 text-xl`} />
@@ -358,7 +360,7 @@ const Members = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex space-x-2 flex-shrink-0">
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
           {[
             { key: "all", label: "All" },
             { key: "active", label: "Active" },
@@ -444,18 +446,134 @@ const Members = () => {
               : "No members found for the selected filter."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr>
-                  <th className="text-left p-4 text-gray-400">Member</th>
-                  <th className="text-left p-4 text-gray-400">Member ID</th>
-                  <th className="text-left p-4 text-gray-400">Contact</th>
-                  <th className="text-left p-4 text-gray-400">Membership</th>
-                  <th className="text-left p-4 text-gray-400">Status</th>
-                  <th className="text-left p-4 text-gray-400">Actions</th>
-                </tr>
-              </thead>
+          <>
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-gray-700/50">
+              {filteredMembers.map((member) => {
+                const membershipStatus = getMembershipStatus(
+                  member.membershipEndDate
+                );
+                const daysUntilExpiry = Math.ceil(
+                  (new Date(member.membershipEndDate).getTime() -
+                    new Date().getTime()) /
+                    (1000 * 60 * 60 * 24)
+                );
+                const isExpiringSoon =
+                  member.status === "active" &&
+                  daysUntilExpiry > 0 &&
+                  daysUntilExpiry <= 7;
+                return (
+                  <motion.div
+                    key={getMemberId(member)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="w-10 h-10 bg-primary-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                          <FaUser className="text-primary-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white font-medium truncate">
+                            {member.firstName} {member.lastName}
+                          </p>
+                          <p className="font-mono text-xs text-primary-500 truncate">
+                            {member.memberId}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(
+                          member.status
+                        )}`}
+                      >
+                        {getStatusIcon(member.status)}
+                        <span className="capitalize">{member.status}</span>
+                      </span>
+                    </div>
+
+                    <div className="text-sm space-y-1">
+                      <p className="text-gray-300 break-all">{member.email}</p>
+                      <p className="text-gray-400">{member.phone}</p>
+                      <p className="text-gray-300">
+                        {new Date(
+                          member.membershipStartDate
+                        ).toLocaleDateString()}{" "}
+                        -{" "}
+                        {new Date(
+                          member.membershipEndDate
+                        ).toLocaleDateString()}
+                      </p>
+                      <p className={membershipStatus.color}>
+                        {membershipStatus.text}
+                      </p>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setSelectedMember(member)}
+                        aria-label="View member"
+                        className="relative z-10 p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30 transition-all cursor-pointer select-none"
+                        style={{ userSelect: "none" }}
+                      >
+                        <FaEye className="pointer-events-none" />
+                      </motion.button>
+                      {isExpiringSoon && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => sendWhatsAppReminder(member)}
+                          aria-label="Send WhatsApp expiry reminder"
+                          title="Send WhatsApp expiry reminder"
+                          className="relative z-10 p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-all cursor-pointer select-none"
+                          style={{ userSelect: "none" }}
+                        >
+                          <FaWhatsapp className="pointer-events-none" />
+                        </motion.button>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() =>
+                          downloadQR(member.qrCode, member.memberId)
+                        }
+                        aria-label="Download member QR code"
+                        className="relative z-10 p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-all cursor-pointer select-none"
+                        style={{ userSelect: "none" }}
+                      >
+                        <FaQrcode className="pointer-events-none" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setMemberToDelete(member)}
+                        aria-label="Delete member"
+                        className="relative z-10 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
+                        style={{ userSelect: "none" }}
+                      >
+                        <FaTrash className="pointer-events-none" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left p-4 text-gray-400">Member ID</th>
+                    <th className="text-left p-4 text-gray-400">Contact</th>
+                    <th className="text-left p-4 text-gray-400">Membership</th>
+                    <th className="text-left p-4 text-gray-400">Status</th>
+                    <th className="text-left p-4 text-gray-400">Actions</th>
+                  </tr>
+                </thead>
               <tbody>
                 {filteredMembers.map((member) => {
                   const membershipStatus = getMembershipStatus(
@@ -541,6 +659,7 @@ const Members = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setSelectedMember(member)}
+                            aria-label="View member"
                             className="relative z-10 p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30 transition-all cursor-pointer select-none"
                             style={{ userSelect: "none" }}
                           >
@@ -551,6 +670,7 @@ const Members = () => {
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => sendWhatsAppReminder(member)}
+                              aria-label="Send WhatsApp expiry reminder"
                               title="Send WhatsApp expiry reminder"
                               className="relative z-10 p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-all cursor-pointer select-none"
                               style={{ userSelect: "none" }}
@@ -564,6 +684,7 @@ const Members = () => {
                             onClick={() =>
                               downloadQR(member.qrCode, member.memberId)
                             }
+                            aria-label="Download member QR code"
                             className="relative z-10 p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-all cursor-pointer select-none"
                             style={{ userSelect: "none" }}
                           >
@@ -573,6 +694,7 @@ const Members = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setMemberToDelete(member)}
+                            aria-label="Delete member"
                             className="relative z-10 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
                             style={{ userSelect: "none" }}
                           >
@@ -583,9 +705,10 @@ const Members = () => {
                     </motion.tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -602,7 +725,7 @@ const Members = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -612,6 +735,7 @@ const Members = () => {
                   onClick={() => setShowCreateModal(false)}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close"
                   className="relative z-10 text-gray-400 hover:text-white cursor-pointer select-none"
                   style={{ userSelect: "none" }}
                 >
@@ -623,7 +747,7 @@ const Members = () => {
                 onSubmit={handleSubmit(handleCreateMember)}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       First Name
@@ -663,7 +787,7 @@ const Members = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Email
@@ -724,7 +848,7 @@ const Members = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Membership Start Date
@@ -764,7 +888,7 @@ const Members = () => {
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <motion.button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
@@ -809,7 +933,7 @@ const Members = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto border border-gray-700"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -819,6 +943,7 @@ const Members = () => {
                   onClick={() => setSelectedMember(null)}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close"
                   className="relative z-10 text-gray-400 hover:text-white cursor-pointer select-none"
                   style={{ userSelect: "none" }}
                 >
@@ -913,7 +1038,7 @@ const Members = () => {
                   )}
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <motion.button
                     onClick={() =>
                       downloadQR(selectedMember.qrCode, selectedMember.memberId)

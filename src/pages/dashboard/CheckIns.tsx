@@ -184,23 +184,25 @@ const CheckIns = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-display text-white mb-2">Check-ins</h1>
+        <h1 className="text-2xl sm:text-3xl font-display text-white mb-2">
+          Check-ins
+        </h1>
         <p className="text-gray-400">
           Manage gym member and day pass check-ins
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card-dark p-6"
+          className="card-dark p-4 sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Currently in Gym</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-2xl sm:text-3xl font-bold text-white">
                 {stats.currentlyInGym}
               </p>
             </div>
@@ -214,12 +216,12 @@ const CheckIns = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="card-dark p-6"
+          className="card-dark p-4 sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Today's Check-ins</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-2xl sm:text-3xl font-bold text-white">
                 {stats.todayTotal}
               </p>
             </div>
@@ -233,12 +235,12 @@ const CheckIns = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="card-dark p-6"
+          className="card-dark p-4 sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Member Check-ins</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-2xl sm:text-3xl font-bold text-white">
                 {stats.memberCheckIns}
               </p>
             </div>
@@ -252,12 +254,12 @@ const CheckIns = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="card-dark p-6"
+          className="card-dark p-4 sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Day Pass Check-ins</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-2xl sm:text-3xl font-bold text-white">
                 {stats.dayPassCheckIns}
               </p>
             </div>
@@ -281,7 +283,7 @@ const CheckIns = () => {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-700">
+          <div className="flex flex-wrap border-b border-gray-700">
             {[
               { key: "qr", label: "QR Code", icon: FaQrcode },
               { key: "member", label: "Member", icon: FaUser },
@@ -291,7 +293,7 @@ const CheckIns = () => {
                 key={tab.key}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`relative z-10 flex-1 flex items-center justify-center space-x-2 p-4 text-sm font-medium transition-all cursor-pointer select-none ${
+                className={`relative z-10 flex-1 min-w-[33%] flex items-center justify-center space-x-2 p-3 sm:p-4 text-sm font-medium transition-all cursor-pointer select-none ${
                   activeTab === tab.key
                     ? "text-primary-500 border-b-2 border-primary-500 bg-primary-500/10"
                     : "text-gray-400 hover:text-white"
@@ -538,6 +540,7 @@ const CheckIns = () => {
                       }}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      aria-label={`Check out ${checkIn.memberName}`}
                       className="relative z-10 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
                       style={{ userSelect: "none" }}
                     >
@@ -576,8 +579,56 @@ const CheckIns = () => {
             No check-ins today yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <>
+            {/* Mobile stacked card list */}
+            <div className="md:hidden divide-y divide-gray-700/50">
+              {todayCheckIns.map((checkIn) => (
+                <div key={checkIn.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-white font-medium truncate">
+                      {checkIn.memberName}
+                    </p>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium shrink-0 ${
+                        checkIn.status === "active"
+                          ? "bg-green-500/20 text-green-500"
+                          : "bg-gray-500/20 text-gray-500"
+                      }`}
+                    >
+                      {checkIn.status === "active" ? "In Gym" : "Completed"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span
+                      className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
+                        checkIn.type
+                      )}`}
+                    >
+                      {checkIn.type === "member" ? <FaUser /> : <IoTicket />}
+                      <span className="capitalize">{checkIn.type}</span>
+                    </span>
+                    <span className="text-gray-300">
+                      {new Date(checkIn.checkInTime).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm text-gray-400">
+                    <div className="flex items-center space-x-1">
+                      {getCheckInIcon(checkIn.checkInMethod)}
+                      <span className="capitalize">
+                        {checkIn.checkInMethod}
+                      </span>
+                    </div>
+                    <span>
+                      {checkIn.duration ? `${checkIn.duration} min` : "-"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
               <thead className="bg-gray-800/50">
                 <tr>
                   <th className="text-left p-4 text-gray-400">Name</th>
@@ -642,7 +693,8 @@ const CheckIns = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </motion.div>
 
@@ -659,7 +711,7 @@ const CheckIns = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto border border-gray-700"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">Check Out</h3>
@@ -667,6 +719,7 @@ const CheckIns = () => {
                   onClick={() => setShowCheckOutModal(false)}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close check-out dialog"
                   className="relative z-10 text-gray-400 hover:text-white cursor-pointer select-none"
                   style={{ userSelect: "none" }}
                 >
@@ -749,7 +802,7 @@ const CheckIns = () => {
                   </div>
                 )}
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                   <motion.button
                     onClick={() => setShowCheckOutModal(false)}
                     whileHover={{ scale: 1.02 }}

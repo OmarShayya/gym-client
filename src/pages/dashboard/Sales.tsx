@@ -198,19 +198,19 @@ const Sales = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display text-white">Sales</h1>
+          <h1 className="text-2xl sm:text-3xl font-display text-white">Sales</h1>
           <p className="text-gray-400">
             Manage transactions and view sales reports
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowReportModal(true)}
-            className="btn-secondary flex items-center space-x-2"
+            className="btn-secondary flex items-center justify-center space-x-2"
           >
             <FaChartLine />
             <span>Sales Report</span>
@@ -219,7 +219,7 @@ const Sales = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary flex items-center space-x-2"
+            className="btn-primary flex items-center justify-center space-x-2"
           >
             <FaPlus />
             <span>New Sale</span>
@@ -228,7 +228,7 @@ const Sales = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {[
           {
             label: "Today's Sales",
@@ -269,9 +269,11 @@ const Sales = () => {
             className="card-dark p-6"
           >
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-400 text-sm">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white truncate">
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg bg-${stat.color}-500/20`}>
                 <stat.icon className={`text-${stat.color}-500 text-xl`} />
@@ -300,87 +302,157 @@ const Sales = () => {
             No sales recorded yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr>
-                  <th className="text-left p-4 text-gray-400">Sale #</th>
-                  <th className="text-left p-4 text-gray-400">Customer</th>
-                  <th className="text-left p-4 text-gray-400">Items</th>
-                  <th className="text-left p-4 text-gray-400">Total</th>
-                  <th className="text-left p-4 text-gray-400">Payment</th>
-                  <th className="text-left p-4 text-gray-400">Date</th>
-                  <th className="text-left p-4 text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales?.slice(0, 10).map((sale) => (
-                  <motion.tr
-                    key={sale.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="border-b border-gray-700/50 hover:bg-gray-800/30"
-                  >
-                    <td className="p-4">
+          <>
+            {/* Table view (md and up) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left p-4 text-gray-400">Sale #</th>
+                    <th className="text-left p-4 text-gray-400">Customer</th>
+                    <th className="text-left p-4 text-gray-400">Items</th>
+                    <th className="text-left p-4 text-gray-400">Total</th>
+                    <th className="text-left p-4 text-gray-400">Payment</th>
+                    <th className="text-left p-4 text-gray-400">Date</th>
+                    <th className="text-left p-4 text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales?.slice(0, 10).map((sale) => (
+                    <motion.tr
+                      key={sale.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="border-b border-gray-700/50 hover:bg-gray-800/30"
+                    >
+                      <td className="p-4">
+                        <span className="font-mono text-sm text-primary-500">
+                          {sale.saleNumber}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div>
+                          <p className="text-white font-medium">
+                            {sale.memberName}
+                          </p>
+                          {sale.memberId && (
+                            <p className="text-gray-400 text-sm">Member</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-gray-300">
+                          {sale.items.length} item(s)
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div>
+                          <p className="text-white font-medium">
+                            ${sale.total?.toFixed(2)}
+                          </p>
+                          {sale.discount && sale.discount.amount > 0 && (
+                            <p className="text-green-500 text-sm">
+                              -${sale.discount.amount.toFixed(2)} discount
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
+                            sale.paymentMethod
+                          )}`}
+                        >
+                          {getPaymentMethodIcon(sale.paymentMethod)}
+                          <span className="capitalize">
+                            {sale.paymentMethod}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-300">
+                        {new Date(sale.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setSelectedSale(sale)}
+                          aria-label={`View sale ${sale.saleNumber}`}
+                          className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
+                        >
+                          <FaEye />
+                        </motion.button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Card list view (below md) */}
+            <div className="md:hidden divide-y divide-gray-700/50">
+              {sales?.slice(0, 10).map((sale) => (
+                <motion.div
+                  key={sale.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 space-y-3 hover:bg-gray-800/30"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
                       <span className="font-mono text-sm text-primary-500">
                         {sale.saleNumber}
                       </span>
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="text-white font-medium">
-                          {sale.memberName}
+                      <p className="text-white font-medium truncate">
+                        {sale.memberName}
+                      </p>
+                      {sale.memberId && (
+                        <p className="text-gray-400 text-sm">Member</p>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-white font-medium">
+                        ${sale.total?.toFixed(2)}
+                      </p>
+                      {sale.discount && sale.discount.amount > 0 && (
+                        <p className="text-green-500 text-sm">
+                          -${sale.discount.amount.toFixed(2)} discount
                         </p>
-                        {sale.memberId && (
-                          <p className="text-gray-400 text-sm">Member</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-gray-300">
-                        {sale.items.length} item(s)
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="text-white font-medium">
-                          ${sale.total?.toFixed(2)}
-                        </p>
-                        {sale.discount && sale.discount.amount > 0 && (
-                          <p className="text-green-500 text-sm">
-                            -${sale.discount.amount.toFixed(2)} discount
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
-                          sale.paymentMethod
-                        )}`}
-                      >
-                        {getPaymentMethodIcon(sale.paymentMethod)}
-                        <span className="capitalize">{sale.paymentMethod}</span>
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-300">
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span
+                      className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
+                        sale.paymentMethod
+                      )}`}
+                    >
+                      {getPaymentMethodIcon(sale.paymentMethod)}
+                      <span className="capitalize">{sale.paymentMethod}</span>
+                    </span>
+                    <span className="text-gray-300">
+                      {sale.items.length} item(s)
+                    </span>
+                    <span className="text-gray-400">
                       {new Date(sale.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-4">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setSelectedSale(sale)}
-                        className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
-                      >
-                        <FaEye />
-                      </motion.button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedSale(sale)}
+                    aria-label={`View sale ${sale.saleNumber}`}
+                    className="w-full flex items-center justify-center space-x-2 p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
+                  >
+                    <FaEye />
+                    <span>View</span>
+                  </motion.button>
+                </motion.div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -397,12 +469,13 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">New Sale</h3>
                 <button
                   onClick={() => setShowCreateModal(false)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
@@ -450,6 +523,7 @@ const Sales = () => {
                       onClick={() =>
                         append({ productId: "", quantity: 1, unitPrice: 0 })
                       }
+                      aria-label="Add item"
                       className="btn-secondary text-sm flex items-center space-x-1"
                     >
                       <FaPlus />
@@ -468,7 +542,7 @@ const Sales = () => {
                     {fields?.map((field, index) => (
                       <div
                         key={field.id}
-                        className="grid grid-cols-5 gap-3 items-end"
+                        className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end bg-gray-800/30 sm:bg-transparent rounded-lg p-3 sm:p-0"
                       >
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -542,9 +616,11 @@ const Sales = () => {
                             <button
                               type="button"
                               onClick={() => remove(index)}
-                              className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
+                              aria-label={`Remove item ${index + 1}`}
+                              className="w-full sm:w-auto flex items-center justify-center space-x-2 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
                             >
                               <FaTrash />
+                              <span className="sm:hidden">Remove</span>
                             </button>
                           )}
                         </div>
@@ -554,7 +630,7 @@ const Sales = () => {
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Payment Method
@@ -606,7 +682,7 @@ const Sales = () => {
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
@@ -643,7 +719,7 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -651,6 +727,7 @@ const Sales = () => {
                 </h3>
                 <button
                   onClick={() => setSelectedSale(null)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
@@ -659,7 +736,7 @@ const Sales = () => {
 
               <div className="space-y-6">
                 {/* Sale Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-gray-400 text-sm">Sale Number</p>
                     <p className="text-white font-mono">
@@ -771,7 +848,7 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -779,13 +856,14 @@ const Sales = () => {
                 </h3>
                 <button
                   onClick={() => setShowReportModal(false)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Start Date
@@ -823,7 +901,7 @@ const Sales = () => {
               {salesReport && (
                 <div className="space-y-6">
                   {/* Report Stats */}
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card-dark p-4">
                       <p className="text-gray-400 text-sm">Total Sales</p>
                       <p className="text-2xl font-bold text-white">
