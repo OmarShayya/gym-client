@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FaQrcode,
   FaUser,
@@ -17,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { IoTicket } from "react-icons/io5";
 import { checkInsApi } from "../../api/checkins.api";
+import { getErrorMessage } from "../../api/client";
 
 const checkInSchema = z.object({
   memberId: z.string().min(1, "Member ID is required"),
@@ -62,7 +64,9 @@ const CheckIns = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       reset();
+      toast.success("Member checked in");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const dayPassCheckInMutation = useMutation({
@@ -70,7 +74,9 @@ const CheckIns = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       resetDayPass();
+      toast.success("Day pass checked in");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const qrCheckInMutation = useMutation({
@@ -78,7 +84,9 @@ const CheckIns = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       resetQR();
+      toast.success("Check-in successful");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const checkOutMutation = useMutation({
@@ -87,7 +95,9 @@ const CheckIns = () => {
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       setShowCheckOutModal(false);
       setSelectedCheckIn(null);
+      toast.success("Check-out successful");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Forms

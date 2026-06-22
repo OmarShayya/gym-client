@@ -18,7 +18,10 @@ import {
   FaEye,
   FaImages,
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 import { productsApi, type ProductResponseDto } from "../../api/products.api";
+import { getErrorMessage } from "../../api/client";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const createProductSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -71,6 +74,8 @@ const Products = () => {
   >("all");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [productToDelete, setProductToDelete] =
+    useState<ProductResponseDto | null>(null);
   const queryClient = useQueryClient();
 
   // Queries
@@ -164,7 +169,9 @@ const Products = () => {
       reset();
       setSelectedImage(null);
       setImagePreview("");
+      toast.success("Product created");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const updateMutation = useMutation({
@@ -196,14 +203,19 @@ const Products = () => {
       reset();
       setSelectedImage(null);
       setImagePreview("");
+      toast.success("Product updated");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: productsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      setProductToDelete(null);
+      toast.success("Product deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -252,9 +264,9 @@ const Products = () => {
     }
   };
 
-  const handleDeleteProduct = (product: ProductResponseDto) => {
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
-      deleteMutation.mutate(product.id);
+  const confirmDeleteProduct = () => {
+    if (productToDelete) {
+      deleteMutation.mutate(productToDelete.id);
     }
   };
 
@@ -603,7 +615,7 @@ const Products = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDeleteProduct(product)}
+                      onClick={() => setProductToDelete(product)}
                       className="relative z-10 flex-1 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
                       style={{ userSelect: "none" }}
                     >
@@ -1097,6 +1109,21 @@ const Products = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!productToDelete}
+        title="Delete Product"
+        message={
+          productToDelete
+            ? `Are you sure you want to delete "${productToDelete.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={confirmDeleteProduct}
+        onCancel={() => setProductToDelete(null)}
+      />
     </div>
   );
 };

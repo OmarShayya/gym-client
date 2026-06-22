@@ -4,6 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FaPlus,
   FaEye,
@@ -27,6 +28,7 @@ import {
 } from "../../api/sales.api";
 import { productsApi } from "../../api/products.api";
 import { membersApi } from "../../api/members.api";
+import { getErrorMessage } from "../../api/client";
 
 const createSaleSchema = z.object({
   memberId: z.string().min(1, "Member is required"),
@@ -97,7 +99,9 @@ const Sales = () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       setShowCreateModal(false);
       reset();
+      toast.success("Sale completed");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form

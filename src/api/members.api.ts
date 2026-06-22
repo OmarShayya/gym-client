@@ -61,6 +61,12 @@ export const membersApi = {
     return response.data;
   },
 
+  // Get active members whose membership expires within `days` days
+  getExpiring: async (days = 7): Promise<MemberResponseDto[]> => {
+    const response = await apiClient.get(`/members/expiring?days=${days}`);
+    return response.data;
+  },
+
   // Search members with optional filters
   search: async (
     params: SearchMembersParams

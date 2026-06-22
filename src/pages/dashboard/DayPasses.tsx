@@ -23,7 +23,10 @@ import {
   FaBan,
 } from "react-icons/fa";
 import { IoTicket } from "react-icons/io5";
+import toast from "react-hot-toast";
 import { dayPassesApi, type DayPassResponseDto } from "../../api/dayPasses.api";
+import { getErrorMessage } from "../../api/client";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const createDayPassSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -45,6 +48,7 @@ const DayPasses = () => {
   const [filter, setFilter] = useState<
     "all" | "today" | "active" | "used" | "expired"
   >("all");
+  const [passToDelete, setPassToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Queries
@@ -65,14 +69,19 @@ const DayPasses = () => {
       queryClient.invalidateQueries({ queryKey: ["dayPasses"] });
       setShowCreateModal(false);
       reset();
+      toast.success("Day pass created");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: dayPassesApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dayPasses"] });
+      setPassToDelete(null);
+      toast.success("Day pass deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -123,9 +132,9 @@ const DayPasses = () => {
     });
   };
 
-  const handleDeletePass = (id: string) => {
-    if (confirm("Are you sure you want to delete this day pass?")) {
-      deleteMutation.mutate(id);
+  const confirmDeletePass = () => {
+    if (passToDelete) {
+      deleteMutation.mutate(passToDelete);
     }
   };
 
@@ -341,7 +350,7 @@ const DayPasses = () => {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDeletePass(pass.id)}
+                          onClick={() => setPassToDelete(pass.id)}
                           className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
                         >
                           <FaTrash />
@@ -657,6 +666,17 @@ const DayPasses = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!passToDelete}
+        title="Delete Day Pass"
+        message="Are you sure you want to delete this day pass? This action cannot be undone."
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={confirmDeletePass}
+        onCancel={() => setPassToDelete(null)}
+      />
     </div>
   );
 };

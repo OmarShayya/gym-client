@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FaPlus,
   FaUser,
@@ -20,8 +21,16 @@ import {
   FaDownload,
   FaLock,
   FaSearch,
+  FaWhatsapp,
 } from "react-icons/fa";
 import { membersApi, type MemberResponseDto } from "../../api/members.api";
+import { getErrorMessage } from "../../api/client";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import ExpiringSoon from "../../components/ExpiringSoon";
+import {
+  buildWhatsAppUrl,
+  expiryReminderMessage,
+} from "../../utils/whatsapp";
 
 const createMemberSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -43,6 +52,9 @@ const Members = () => {
     "all" | "active" | "inactive" | "suspended" | "expiring"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [memberToDelete, setMemberToDelete] =
+    useState<MemberResponseDto | null>(null);
+  const [showExpiring, setShowExpiring] = useState(false);
   const queryClient = useQueryClient();
 
   // Helper function to get the correct ID from member object
@@ -63,14 +75,19 @@ const Members = () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
       setShowCreateModal(false);
       reset();
+      toast.success("Member created");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: membersApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });
+      setMemberToDelete(null);
+      toast.success("Member deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const updateStatusMutation = useMutation({
@@ -90,7 +107,9 @@ const Members = () => {
       ) {
         setSelectedMember(updatedMember);
       }
+      toast.success("Status updated");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -175,9 +194,10 @@ const Members = () => {
     createMutation.mutate(data);
   };
 
-  const handleDeleteMember = (member: MemberResponseDto) => {
-    const memberId = getMemberId(member);
-    if (confirm("Are you sure you want to delete this member?")) {
+  const confirmDeleteMember = () => {
+    if (!memberToDelete) return;
+    const memberId = getMemberId(memberToDelete);
+    if (memberId) {
       deleteMutation.mutate(memberId);
     }
   };
@@ -186,8 +206,15 @@ const Members = () => {
     id: string,
     status: "active" | "inactive" | "suspended"
   ) => {
-    console.log("Updating status for member ID:", id, "to status:", status);
     updateStatusMutation.mutate({ id, status });
+  };
+
+  const sendWhatsAppReminder = (member: MemberResponseDto) => {
+    const url = buildWhatsAppUrl(
+      member.phone,
+      expiryReminderMessage(member.firstName, member.membershipEndDate)
+    );
+    window.open(url, "_blank");
   };
 
   const downloadQR = (qrCode: string, memberId: string) => {
@@ -366,6 +393,34 @@ const Members = () => {
         </div>
       )}
 
+      {/* Expiring Soon (collapsible) */}
+      <div>
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          onClick={() => setShowExpiring((prev) => !prev)}
+          className="relative z-10 flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-green-500/20 text-green-500 border border-green-500/30 hover:bg-green-500/30 transition-all cursor-pointer select-none"
+          style={{ userSelect: "none" }}
+        >
+          <FaWhatsapp className="pointer-events-none" />
+          <span className="pointer-events-none">
+            {showExpiring ? "Hide" : "Show"} Expiring Memberships
+          </span>
+        </motion.button>
+        <AnimatePresence>
+          {showExpiring && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mt-4"
+            >
+              <ExpiringSoon days={7} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Members List */}
       <div className="card-dark">
         <div className="p-6 border-b border-gray-700">
@@ -406,6 +461,15 @@ const Members = () => {
                   const membershipStatus = getMembershipStatus(
                     member.membershipEndDate
                   );
+                  const daysUntilExpiry = Math.ceil(
+                    (new Date(member.membershipEndDate).getTime() -
+                      new Date().getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  );
+                  const isExpiringSoon =
+                    member.status === "active" &&
+                    daysUntilExpiry > 0 &&
+                    daysUntilExpiry <= 7;
                   return (
                     <motion.tr
                       key={getMemberId(member)}
@@ -482,6 +546,18 @@ const Members = () => {
                           >
                             <FaEye className="pointer-events-none" />
                           </motion.button>
+                          {isExpiringSoon && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => sendWhatsAppReminder(member)}
+                              title="Send WhatsApp expiry reminder"
+                              className="relative z-10 p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-all cursor-pointer select-none"
+                              style={{ userSelect: "none" }}
+                            >
+                              <FaWhatsapp className="pointer-events-none" />
+                            </motion.button>
+                          )}
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -496,7 +572,7 @@ const Members = () => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => handleDeleteMember(member)}
+                            onClick={() => setMemberToDelete(member)}
                             className="relative z-10 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
                             style={{ userSelect: "none" }}
                           >
@@ -865,6 +941,21 @@ const Members = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!memberToDelete}
+        title="Delete Member"
+        message={
+          memberToDelete
+            ? `Are you sure you want to delete ${memberToDelete.firstName} ${memberToDelete.lastName}? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={confirmDeleteMember}
+        onCancel={() => setMemberToDelete(null)}
+      />
     </div>
   );
 };

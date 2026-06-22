@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./store/authStore";
 
 // Public Pages
@@ -66,6 +67,22 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "#1f2937",
+            color: "#f9fafb",
+            border: "1px solid #374151",
+          },
+          success: {
+            iconTheme: { primary: "#22c55e", secondary: "#1f2937" },
+          },
+          error: {
+            iconTheme: { primary: "#ef4444", secondary: "#1f2937" },
+          },
+        }}
+      />
       <Router>
         <Routes>
           {/* Public Route - Landing Page Only */}
