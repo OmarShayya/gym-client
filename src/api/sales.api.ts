@@ -1,37 +1,45 @@
 import { apiClient } from "./client";
 
 export interface CreateSaleDto {
-  memberId?: string;
-  customerName?: string;
+  memberId: string;
   items: Array<{
     productId: string;
     quantity: number;
-    unitPrice: number;
   }>;
   paymentMethod: "cash" | "card" | "transfer";
-  discount?: number;
   notes?: string;
+}
+
+export interface SaleDiscountDto {
+  type: string;
+  value: number;
+  amount: number;
+  description?: string;
 }
 
 export interface SaleResponseDto {
   id: string;
   saleNumber: string;
-  memberId?: string;
-  memberName?: string;
-  customerName?: string;
+  memberId: string;
+  memberName: string;
   items: Array<{
     productId: string;
     productName: string;
+    productSku?: string;
     quantity: number;
     unitPrice: number;
-    totalPrice: number;
+    discount?: number;
+    subtotal: number;
+    refundedQuantity?: number;
   }>;
   subtotal: number;
-  discount: number;
+  discount?: SaleDiscountDto;
+  tax: number;
   total: number;
-  paymentMethod: "cash" | "card" | "transfer";
+  paymentMethod: "cash" | "card" | "transfer" | "online" | "store_credit";
+  status: string;
   notes?: string;
-  saleDate: string;
+  processedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -122,7 +130,7 @@ export const salesApi = {
 
   // Get sale by sale number
   findBySaleNumber: async (saleNumber: string): Promise<SaleResponseDto> => {
-    const response = await apiClient.get(`/sales/by-number/${saleNumber}`);
+    const response = await apiClient.get(`/sales/number/${saleNumber}`);
     return response.data;
   },
 };

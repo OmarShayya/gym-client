@@ -6,7 +6,7 @@ export interface CheckInDto {
 }
 
 export interface CheckOutDto {
-  memberId: string;
+  identifier: string;
 }
 
 export interface DayPassCheckInDto {
@@ -34,7 +34,7 @@ export interface CheckInResponseDto {
 export const checkInsApi = {
   // Check in member
   checkIn: async (data: CheckInDto): Promise<CheckInResponseDto> => {
-    const response = await apiClient.post("/check-ins/in", data);
+    const response = await apiClient.post("/check-ins/member", data);
     return response.data;
   },
 
@@ -42,7 +42,7 @@ export const checkInsApi = {
   checkInDayPass: async (
     data: DayPassCheckInDto
   ): Promise<CheckInResponseDto> => {
-    const response = await apiClient.post("/check-ins/day-pass/in", data);
+    const response = await apiClient.post("/check-ins/day-pass", data);
     return response.data;
   },
 
@@ -54,7 +54,7 @@ export const checkInsApi = {
 
   // Check out
   checkOut: async (data: CheckOutDto): Promise<CheckInResponseDto> => {
-    const response = await apiClient.post("/check-ins/out", data);
+    const response = await apiClient.post("/check-ins/checkout", data);
     return response.data;
   },
 

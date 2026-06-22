@@ -148,7 +148,7 @@ const CheckIns = () => {
           : selectedCheckIn.dayPassInfo?.passId;
 
       if (memberId) {
-        checkOutMutation.mutate({ memberId });
+        checkOutMutation.mutate({ identifier: memberId });
       }
     }
   };

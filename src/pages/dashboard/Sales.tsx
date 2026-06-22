@@ -28,27 +28,21 @@ import {
 import { productsApi } from "../../api/products.api";
 import { membersApi } from "../../api/members.api";
 
-const createSaleSchema = z
-  .object({
-    memberId: z.string().optional(),
-    customerName: z.string().optional(),
-    items: z
-      .array(
-        z.object({
-          productId: z.string().min(1, "Product is required"),
-          quantity: z.number().min(1, "Quantity must be at least 1"),
-          unitPrice: z.number().min(0.01, "Price must be greater than 0"),
-        })
-      )
-      .min(1, "At least one item is required"),
-    paymentMethod: z.enum(["cash", "card", "transfer"]),
-    discount: z.number().min(0).optional(),
-    notes: z.string().optional(),
-  })
-  .refine((data) => data.memberId || data.customerName, {
-    message: "Either member or customer name is required",
-    path: ["customerName"],
-  });
+const createSaleSchema = z.object({
+  memberId: z.string().min(1, "Member is required"),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1, "Product is required"),
+        quantity: z.number().min(1, "Quantity must be at least 1"),
+        // Client-side estimate only; the backend computes prices server-side.
+        unitPrice: z.number().min(0),
+      })
+    )
+    .min(1, "At least one item is required"),
+  paymentMethod: z.enum(["cash", "card", "transfer"]),
+  notes: z.string().optional(),
+});
 
 type CreateSaleForm = z.infer<typeof createSaleSchema>;
 
@@ -118,9 +112,9 @@ const Sales = () => {
   } = useForm<CreateSaleForm>({
     resolver: zodResolver(createSaleSchema),
     defaultValues: {
+      memberId: "",
       items: [{ productId: "", quantity: 1, unitPrice: 0 }],
       paymentMethod: "cash",
-      discount: 0,
     },
   });
 
@@ -130,13 +124,11 @@ const Sales = () => {
   });
 
   const watchedItems = watch("items");
-  const watchedDiscount = watch("discount") || 0;
 
-  // Calculate totals
-  const subtotal = watchedItems.reduce((sum: number, item) => {
+  // Client-side estimate only (the backend computes the authoritative total).
+  const estimatedTotal = watchedItems.reduce((sum: number, item) => {
     return sum + (item.quantity || 0) * (item.unitPrice || 0);
   }, 0);
-  const total = subtotal - watchedDiscount;
 
   // Stats - Fixed with proper type checking
   const stats = {
@@ -152,10 +144,15 @@ const Sales = () => {
   };
 
   const handleCreateSale = (data: CreateSaleForm) => {
-    // Transform the data to match CreateSaleDto
+    // Send only what the backend accepts; prices are computed server-side.
     const saleData: CreateSaleDto = {
-      ...data,
-      discount: data.discount || 0,
+      memberId: data.memberId,
+      items: data.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      paymentMethod: data.paymentMethod,
+      notes: data.notes,
     };
     createMutation.mutate(saleData);
   };
@@ -328,9 +325,7 @@ const Sales = () => {
                     <td className="p-4">
                       <div>
                         <p className="text-white font-medium">
-                          {sale.memberName ||
-                            sale.customerName ||
-                            "Walk-in Customer"}
+                          {sale.memberName}
                         </p>
                         {sale.memberId && (
                           <p className="text-gray-400 text-sm">Member</p>
@@ -347,9 +342,9 @@ const Sales = () => {
                         <p className="text-white font-medium">
                           ${sale.total?.toFixed(2)}
                         </p>
-                        {sale.discount > 0 && (
+                        {sale.discount && sale.discount.amount > 0 && (
                           <p className="text-green-500 text-sm">
-                            -${sale.discount?.toFixed(2)} discount
+                            -${sale.discount.amount.toFixed(2)} discount
                           </p>
                         )}
                       </div>
@@ -365,7 +360,7 @@ const Sales = () => {
                       </span>
                     </td>
                     <td className="p-4 text-gray-300">
-                      {new Date(sale.saleDate).toLocaleDateString()}
+                      {new Date(sale.createdAt).toLocaleDateString()}
                     </td>
                     <td className="p-4">
                       <motion.button
@@ -414,15 +409,15 @@ const Sales = () => {
                 onSubmit={handleSubmit(handleCreateSale)}
                 className="space-y-6"
               >
-                {/* Customer Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Member (Optional)
-                    </label>
+                {/* Member */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Member
+                  </label>
+                  <div className="relative">
                     <select
                       {...register("memberId")}
-                      className="input-dark w-full"
+                      className="input-dark w-full pl-10"
                     >
                       <option value="">Select Member</option>
                       {Array.isArray(members) &&
@@ -433,26 +428,13 @@ const Sales = () => {
                           </option>
                         ))}
                     </select>
+                    <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Customer Name (if not member)
-                    </label>
-                    <div className="relative">
-                      <input
-                        {...register("customerName")}
-                        className="input-dark w-full pl-10"
-                        placeholder="Walk-in Customer"
-                      />
-                      <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                    </div>
-                    {errors.customerName && (
-                      <p className="mt-1 text-sm text-red-500">
-                        {errors.customerName.message}
-                      </p>
-                    )}
-                  </div>
+                  {errors.memberId && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.memberId.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Items */}
@@ -568,7 +550,7 @@ const Sales = () => {
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Payment Method
@@ -585,24 +567,10 @@ const Sales = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Discount ($)
-                    </label>
-                    <input
-                      {...register("discount", { valueAsNumber: true })}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="input-dark w-full"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Total
+                      Estimated Total
                     </label>
                     <div className="input-dark w-full bg-primary-500/20 text-primary-500 font-bold text-lg">
-                      ${total?.toFixed(2)}
+                      ${estimatedTotal?.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -624,14 +592,11 @@ const Sales = () => {
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-gray-400">
-                        Subtotal: ${subtotal?.toFixed(2)}
-                      </p>
-                      <p className="text-gray-400">
-                        Discount: -${watchedDiscount?.toFixed(2)}
-                      </p>
                       <p className="text-white font-bold text-lg">
-                        Total: ${total?.toFixed(2)}
+                        Estimated Total: ${estimatedTotal?.toFixed(2)}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        Final pricing is calculated by the server.
                       </p>
                     </div>
                   </div>
@@ -700,16 +665,12 @@ const Sales = () => {
                   <div>
                     <p className="text-gray-400 text-sm">Date</p>
                     <p className="text-white">
-                      {new Date(selectedSale.saleDate).toLocaleString()}
+                      {new Date(selectedSale.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Customer</p>
-                    <p className="text-white">
-                      {selectedSale.memberName ||
-                        selectedSale.customerName ||
-                        "Walk-in"}
-                    </p>
+                    <p className="text-white">{selectedSale.memberName}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Payment Method</p>
@@ -744,7 +705,7 @@ const Sales = () => {
                           </p>
                         </div>
                         <p className="text-white font-medium">
-                          ${item.totalPrice?.toFixed(2)}
+                          ${item.subtotal?.toFixed(2)}
                         </p>
                       </div>
                     ))}
@@ -758,12 +719,15 @@ const Sales = () => {
                       <span>Subtotal:</span>
                       <span>${selectedSale.subtotal?.toFixed(2)}</span>
                     </div>
-                    {selectedSale.discount > 0 && (
-                      <div className="flex justify-between text-green-500">
-                        <span>Discount:</span>
-                        <span>-${selectedSale.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
+                    {selectedSale.discount &&
+                      selectedSale.discount.amount > 0 && (
+                        <div className="flex justify-between text-green-500">
+                          <span>Discount:</span>
+                          <span>
+                            -${selectedSale.discount.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
                     <div className="flex justify-between text-white font-bold text-lg border-t border-gray-700 pt-2">
                       <span>Total:</span>
                       <span>${selectedSale.total?.toFixed(2)}</span>
