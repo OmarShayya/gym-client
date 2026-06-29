@@ -15,7 +15,11 @@ export interface RegisterDto {
 }
 
 export interface AuthResponse {
-  access_token: string;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  };
   user: {
     id: string;
     email: string;
@@ -23,6 +27,7 @@ export interface AuthResponse {
     lastName: string;
     role: string;
     memberId: string;
+    isActive: boolean;
   };
 }
 
@@ -102,25 +107,36 @@ export interface Product {
 }
 
 // Sale Types
+export interface SaleDiscount {
+  type: string;
+  value: number;
+  amount: number;
+  description?: string;
+}
+
 export interface Sale {
   id: string;
   saleNumber: string;
-  memberId?: string;
-  memberName?: string;
-  customerName?: string;
+  memberId: string;
+  memberName: string;
   items: Array<{
     productId: string;
     productName: string;
+    productSku?: string;
     quantity: number;
     unitPrice: number;
-    totalPrice: number;
+    discount?: number;
+    subtotal: number;
+    refundedQuantity?: number;
   }>;
   subtotal: number;
-  discount: number;
+  discount?: SaleDiscount;
+  tax: number;
   total: number;
-  paymentMethod: "cash" | "card" | "transfer";
+  paymentMethod: "cash" | "card" | "transfer" | "online" | "store_credit";
+  status: string;
   notes?: string;
-  saleDate: string;
+  processedBy?: string;
   createdAt: string;
   updatedAt: string;
 }

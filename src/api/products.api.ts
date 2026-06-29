@@ -409,23 +409,6 @@ export const productsApi = {
     return response.data;
   },
 
-  bulkToggleActive: async (
-    productIds: string[]
-  ): Promise<
-    Array<{
-      productId: string;
-      success: boolean;
-      newStatus?: boolean;
-      error?: string;
-    }>
-  > => {
-    const response = await apiClient.patch(
-      "/products/bulk/toggle-active",
-      productIds
-    );
-    return response.data;
-  },
-
   // Delete product
   remove: async (id: string): Promise<void> => {
     await apiClient.delete(`/products/${id}`);

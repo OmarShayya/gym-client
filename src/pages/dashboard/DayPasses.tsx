@@ -23,7 +23,10 @@ import {
   FaBan,
 } from "react-icons/fa";
 import { IoTicket } from "react-icons/io5";
+import toast from "react-hot-toast";
 import { dayPassesApi, type DayPassResponseDto } from "../../api/dayPasses.api";
+import { getErrorMessage } from "../../api/client";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const createDayPassSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -45,6 +48,7 @@ const DayPasses = () => {
   const [filter, setFilter] = useState<
     "all" | "today" | "active" | "used" | "expired"
   >("all");
+  const [passToDelete, setPassToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Queries
@@ -65,14 +69,19 @@ const DayPasses = () => {
       queryClient.invalidateQueries({ queryKey: ["dayPasses"] });
       setShowCreateModal(false);
       reset();
+      toast.success("Day pass created");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: dayPassesApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dayPasses"] });
+      setPassToDelete(null);
+      toast.success("Day pass deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -123,9 +132,9 @@ const DayPasses = () => {
     });
   };
 
-  const handleDeletePass = (id: string) => {
-    if (confirm("Are you sure you want to delete this day pass?")) {
-      deleteMutation.mutate(id);
+  const confirmDeletePass = () => {
+    if (passToDelete) {
+      deleteMutation.mutate(passToDelete);
     }
   };
 
@@ -165,16 +174,18 @@ const DayPasses = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display text-white">Day Passes</h1>
+          <h1 className="text-2xl sm:text-3xl font-display text-white">
+            Day Passes
+          </h1>
           <p className="text-gray-400">Manage single-day gym access passes</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center space-x-2"
+          className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
         >
           <FaPlus />
           <span>Create Day Pass</span>
@@ -182,7 +193,7 @@ const DayPasses = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
           {
             label: "Total Passes",
@@ -214,12 +225,14 @@ const DayPasses = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="card-dark p-6"
+            className="card-dark p-4 sm:p-6"
           >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg bg-${stat.color}-500/20`}>
                 <stat.icon className={`text-${stat.color}-500 text-xl`} />
@@ -230,7 +243,7 @@ const DayPasses = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex space-x-2">
+      <div className="flex flex-wrap gap-2">
         {[
           { key: "all", label: "All" },
           { key: "today", label: "Today" },
@@ -273,18 +286,89 @@ const DayPasses = () => {
             No day passes found for the selected filter.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr>
-                  <th className="text-left p-4 text-gray-400">Pass ID</th>
-                  <th className="text-left p-4 text-gray-400">Customer</th>
-                  <th className="text-left p-4 text-gray-400">Valid Date</th>
-                  <th className="text-left p-4 text-gray-400">Amount</th>
-                  <th className="text-left p-4 text-gray-400">Status</th>
-                  <th className="text-left p-4 text-gray-400">Actions</th>
-                </tr>
-              </thead>
+          <>
+            {/* Mobile card list */}
+            <div className="md:hidden divide-y divide-gray-700/50">
+              {filteredPasses.map((pass) => (
+                <motion.div
+                  key={pass.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">
+                        {pass.firstName} {pass.lastName}
+                      </p>
+                      <p className="font-mono text-xs text-primary-500 truncate">
+                        {pass.passId}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusColor(
+                        pass.status
+                      )}`}
+                    >
+                      {getStatusIcon(pass.status)}
+                      <span className="capitalize">{pass.status}</span>
+                    </span>
+                  </div>
+
+                  <div className="text-sm space-y-1">
+                    <p className="text-gray-300 break-all">{pass.email}</p>
+                    <p className="text-gray-400">
+                      {new Date(pass.validDate).toLocaleDateString()}
+                    </p>
+                    <p className="text-gray-300">${pass.amount}</p>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setSelectedPass(pass)}
+                      aria-label="View day pass"
+                      className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
+                    >
+                      <FaEye />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => downloadQR(pass.qrCode, pass.passId)}
+                      aria-label="Download day pass QR code"
+                      className="p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30"
+                    >
+                      <FaQrcode />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setPassToDelete(pass.id)}
+                      aria-label="Delete day pass"
+                      className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
+                    >
+                      <FaTrash />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left p-4 text-gray-400">Pass ID</th>
+                    <th className="text-left p-4 text-gray-400">Customer</th>
+                    <th className="text-left p-4 text-gray-400">Valid Date</th>
+                    <th className="text-left p-4 text-gray-400">Amount</th>
+                    <th className="text-left p-4 text-gray-400">Status</th>
+                    <th className="text-left p-4 text-gray-400">Actions</th>
+                  </tr>
+                </thead>
               <tbody>
                 {filteredPasses.map((pass) => (
                   <motion.tr
@@ -326,6 +410,7 @@ const DayPasses = () => {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => setSelectedPass(pass)}
+                          aria-label="View day pass"
                           className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
                         >
                           <FaEye />
@@ -334,6 +419,7 @@ const DayPasses = () => {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => downloadQR(pass.qrCode, pass.passId)}
+                          aria-label="Download day pass QR code"
                           className="p-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30"
                         >
                           <FaQrcode />
@@ -341,7 +427,8 @@ const DayPasses = () => {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDeletePass(pass.id)}
+                          onClick={() => setPassToDelete(pass.id)}
+                          aria-label="Delete day pass"
                           className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
                         >
                           <FaTrash />
@@ -349,10 +436,11 @@ const DayPasses = () => {
                       </div>
                     </td>
                   </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -369,7 +457,7 @@ const DayPasses = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto border border-gray-700"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -377,6 +465,7 @@ const DayPasses = () => {
                 </h3>
                 <button
                   onClick={() => setShowCreateModal(false)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
@@ -387,7 +476,7 @@ const DayPasses = () => {
                 onSubmit={handleSubmit(handleCreatePass)}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       First Name
@@ -466,7 +555,7 @@ const DayPasses = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Valid Date
@@ -520,7 +609,7 @@ const DayPasses = () => {
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
@@ -635,7 +724,7 @@ const DayPasses = () => {
                   </div>
                 )}
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     onClick={() =>
                       downloadQR(selectedPass.qrCode, selectedPass.passId)
@@ -657,6 +746,17 @@ const DayPasses = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!passToDelete}
+        title="Delete Day Pass"
+        message="Are you sure you want to delete this day pass? This action cannot be undone."
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={confirmDeletePass}
+        onCancel={() => setPassToDelete(null)}
+      />
     </div>
   );
 };

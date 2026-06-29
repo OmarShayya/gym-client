@@ -4,6 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FaPlus,
   FaEye,
@@ -27,28 +28,23 @@ import {
 } from "../../api/sales.api";
 import { productsApi } from "../../api/products.api";
 import { membersApi } from "../../api/members.api";
+import { getErrorMessage } from "../../api/client";
 
-const createSaleSchema = z
-  .object({
-    memberId: z.string().optional(),
-    customerName: z.string().optional(),
-    items: z
-      .array(
-        z.object({
-          productId: z.string().min(1, "Product is required"),
-          quantity: z.number().min(1, "Quantity must be at least 1"),
-          unitPrice: z.number().min(0.01, "Price must be greater than 0"),
-        })
-      )
-      .min(1, "At least one item is required"),
-    paymentMethod: z.enum(["cash", "card", "transfer"]),
-    discount: z.number().min(0).optional(),
-    notes: z.string().optional(),
-  })
-  .refine((data) => data.memberId || data.customerName, {
-    message: "Either member or customer name is required",
-    path: ["customerName"],
-  });
+const createSaleSchema = z.object({
+  memberId: z.string().min(1, "Member is required"),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1, "Product is required"),
+        quantity: z.number().min(1, "Quantity must be at least 1"),
+        // Client-side estimate only; the backend computes prices server-side.
+        unitPrice: z.number().min(0),
+      })
+    )
+    .min(1, "At least one item is required"),
+  paymentMethod: z.enum(["cash", "card", "transfer"]),
+  notes: z.string().optional(),
+});
 
 type CreateSaleForm = z.infer<typeof createSaleSchema>;
 
@@ -103,7 +99,9 @@ const Sales = () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       setShowCreateModal(false);
       reset();
+      toast.success("Sale completed");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -118,9 +116,9 @@ const Sales = () => {
   } = useForm<CreateSaleForm>({
     resolver: zodResolver(createSaleSchema),
     defaultValues: {
+      memberId: "",
       items: [{ productId: "", quantity: 1, unitPrice: 0 }],
       paymentMethod: "cash",
-      discount: 0,
     },
   });
 
@@ -130,13 +128,11 @@ const Sales = () => {
   });
 
   const watchedItems = watch("items");
-  const watchedDiscount = watch("discount") || 0;
 
-  // Calculate totals
-  const subtotal = watchedItems.reduce((sum: number, item) => {
+  // Client-side estimate only (the backend computes the authoritative total).
+  const estimatedTotal = watchedItems.reduce((sum: number, item) => {
     return sum + (item.quantity || 0) * (item.unitPrice || 0);
   }, 0);
-  const total = subtotal - watchedDiscount;
 
   // Stats - Fixed with proper type checking
   const stats = {
@@ -152,10 +148,15 @@ const Sales = () => {
   };
 
   const handleCreateSale = (data: CreateSaleForm) => {
-    // Transform the data to match CreateSaleDto
+    // Send only what the backend accepts; prices are computed server-side.
     const saleData: CreateSaleDto = {
-      ...data,
-      discount: data.discount || 0,
+      memberId: data.memberId,
+      items: data.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      paymentMethod: data.paymentMethod,
+      notes: data.notes,
     };
     createMutation.mutate(saleData);
   };
@@ -197,19 +198,19 @@ const Sales = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display text-white">Sales</h1>
+          <h1 className="text-2xl sm:text-3xl font-display text-white">Sales</h1>
           <p className="text-gray-400">
             Manage transactions and view sales reports
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowReportModal(true)}
-            className="btn-secondary flex items-center space-x-2"
+            className="btn-secondary flex items-center justify-center space-x-2"
           >
             <FaChartLine />
             <span>Sales Report</span>
@@ -218,7 +219,7 @@ const Sales = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowCreateModal(true)}
-            className="btn-primary flex items-center space-x-2"
+            className="btn-primary flex items-center justify-center space-x-2"
           >
             <FaPlus />
             <span>New Sale</span>
@@ -227,7 +228,7 @@ const Sales = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {[
           {
             label: "Today's Sales",
@@ -268,9 +269,11 @@ const Sales = () => {
             className="card-dark p-6"
           >
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-gray-400 text-sm">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white truncate">
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg bg-${stat.color}-500/20`}>
                 <stat.icon className={`text-${stat.color}-500 text-xl`} />
@@ -299,89 +302,157 @@ const Sales = () => {
             No sales recorded yet.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr>
-                  <th className="text-left p-4 text-gray-400">Sale #</th>
-                  <th className="text-left p-4 text-gray-400">Customer</th>
-                  <th className="text-left p-4 text-gray-400">Items</th>
-                  <th className="text-left p-4 text-gray-400">Total</th>
-                  <th className="text-left p-4 text-gray-400">Payment</th>
-                  <th className="text-left p-4 text-gray-400">Date</th>
-                  <th className="text-left p-4 text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales?.slice(0, 10).map((sale) => (
-                  <motion.tr
-                    key={sale.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="border-b border-gray-700/50 hover:bg-gray-800/30"
-                  >
-                    <td className="p-4">
+          <>
+            {/* Table view (md and up) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-800/50">
+                  <tr>
+                    <th className="text-left p-4 text-gray-400">Sale #</th>
+                    <th className="text-left p-4 text-gray-400">Customer</th>
+                    <th className="text-left p-4 text-gray-400">Items</th>
+                    <th className="text-left p-4 text-gray-400">Total</th>
+                    <th className="text-left p-4 text-gray-400">Payment</th>
+                    <th className="text-left p-4 text-gray-400">Date</th>
+                    <th className="text-left p-4 text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales?.slice(0, 10).map((sale) => (
+                    <motion.tr
+                      key={sale.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="border-b border-gray-700/50 hover:bg-gray-800/30"
+                    >
+                      <td className="p-4">
+                        <span className="font-mono text-sm text-primary-500">
+                          {sale.saleNumber}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div>
+                          <p className="text-white font-medium">
+                            {sale.memberName}
+                          </p>
+                          {sale.memberId && (
+                            <p className="text-gray-400 text-sm">Member</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-gray-300">
+                          {sale.items.length} item(s)
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div>
+                          <p className="text-white font-medium">
+                            ${sale.total?.toFixed(2)}
+                          </p>
+                          {sale.discount && sale.discount.amount > 0 && (
+                            <p className="text-green-500 text-sm">
+                              -${sale.discount.amount.toFixed(2)} discount
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
+                            sale.paymentMethod
+                          )}`}
+                        >
+                          {getPaymentMethodIcon(sale.paymentMethod)}
+                          <span className="capitalize">
+                            {sale.paymentMethod}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-300">
+                        {new Date(sale.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setSelectedSale(sale)}
+                          aria-label={`View sale ${sale.saleNumber}`}
+                          className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
+                        >
+                          <FaEye />
+                        </motion.button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Card list view (below md) */}
+            <div className="md:hidden divide-y divide-gray-700/50">
+              {sales?.slice(0, 10).map((sale) => (
+                <motion.div
+                  key={sale.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 space-y-3 hover:bg-gray-800/30"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
                       <span className="font-mono text-sm text-primary-500">
                         {sale.saleNumber}
                       </span>
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="text-white font-medium">
-                          {sale.memberName ||
-                            sale.customerName ||
-                            "Walk-in Customer"}
+                      <p className="text-white font-medium truncate">
+                        {sale.memberName}
+                      </p>
+                      {sale.memberId && (
+                        <p className="text-gray-400 text-sm">Member</p>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-white font-medium">
+                        ${sale.total?.toFixed(2)}
+                      </p>
+                      {sale.discount && sale.discount.amount > 0 && (
+                        <p className="text-green-500 text-sm">
+                          -${sale.discount.amount.toFixed(2)} discount
                         </p>
-                        {sale.memberId && (
-                          <p className="text-gray-400 text-sm">Member</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-gray-300">
-                        {sale.items.length} item(s)
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="text-white font-medium">
-                          ${sale.total?.toFixed(2)}
-                        </p>
-                        {sale.discount > 0 && (
-                          <p className="text-green-500 text-sm">
-                            -${sale.discount?.toFixed(2)} discount
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
-                          sale.paymentMethod
-                        )}`}
-                      >
-                        {getPaymentMethodIcon(sale.paymentMethod)}
-                        <span className="capitalize">{sale.paymentMethod}</span>
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-300">
-                      {new Date(sale.saleDate).toLocaleDateString()}
-                    </td>
-                    <td className="p-4">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setSelectedSale(sale)}
-                        className="p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
-                      >
-                        <FaEye />
-                      </motion.button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span
+                      className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getPaymentMethodColor(
+                        sale.paymentMethod
+                      )}`}
+                    >
+                      {getPaymentMethodIcon(sale.paymentMethod)}
+                      <span className="capitalize">{sale.paymentMethod}</span>
+                    </span>
+                    <span className="text-gray-300">
+                      {sale.items.length} item(s)
+                    </span>
+                    <span className="text-gray-400">
+                      {new Date(sale.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedSale(sale)}
+                    aria-label={`View sale ${sale.saleNumber}`}
+                    className="w-full flex items-center justify-center space-x-2 p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30"
+                  >
+                    <FaEye />
+                    <span>View</span>
+                  </motion.button>
+                </motion.div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -398,12 +469,13 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">New Sale</h3>
                 <button
                   onClick={() => setShowCreateModal(false)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
@@ -414,15 +486,15 @@ const Sales = () => {
                 onSubmit={handleSubmit(handleCreateSale)}
                 className="space-y-6"
               >
-                {/* Customer Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Member (Optional)
-                    </label>
+                {/* Member */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Member
+                  </label>
+                  <div className="relative">
                     <select
                       {...register("memberId")}
-                      className="input-dark w-full"
+                      className="input-dark w-full pl-10"
                     >
                       <option value="">Select Member</option>
                       {Array.isArray(members) &&
@@ -433,26 +505,13 @@ const Sales = () => {
                           </option>
                         ))}
                     </select>
+                    <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Customer Name (if not member)
-                    </label>
-                    <div className="relative">
-                      <input
-                        {...register("customerName")}
-                        className="input-dark w-full pl-10"
-                        placeholder="Walk-in Customer"
-                      />
-                      <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                    </div>
-                    {errors.customerName && (
-                      <p className="mt-1 text-sm text-red-500">
-                        {errors.customerName.message}
-                      </p>
-                    )}
-                  </div>
+                  {errors.memberId && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.memberId.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Items */}
@@ -464,6 +523,7 @@ const Sales = () => {
                       onClick={() =>
                         append({ productId: "", quantity: 1, unitPrice: 0 })
                       }
+                      aria-label="Add item"
                       className="btn-secondary text-sm flex items-center space-x-1"
                     >
                       <FaPlus />
@@ -482,7 +542,7 @@ const Sales = () => {
                     {fields?.map((field, index) => (
                       <div
                         key={field.id}
-                        className="grid grid-cols-5 gap-3 items-end"
+                        className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end bg-gray-800/30 sm:bg-transparent rounded-lg p-3 sm:p-0"
                       >
                         <div>
                           <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -556,9 +616,11 @@ const Sales = () => {
                             <button
                               type="button"
                               onClick={() => remove(index)}
-                              className="p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
+                              aria-label={`Remove item ${index + 1}`}
+                              className="w-full sm:w-auto flex items-center justify-center space-x-2 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
                             >
                               <FaTrash />
+                              <span className="sm:hidden">Remove</span>
                             </button>
                           )}
                         </div>
@@ -568,7 +630,7 @@ const Sales = () => {
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Payment Method
@@ -585,24 +647,10 @@ const Sales = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Discount ($)
-                    </label>
-                    <input
-                      {...register("discount", { valueAsNumber: true })}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="input-dark w-full"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Total
+                      Estimated Total
                     </label>
                     <div className="input-dark w-full bg-primary-500/20 text-primary-500 font-bold text-lg">
-                      ${total?.toFixed(2)}
+                      ${estimatedTotal?.toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -624,20 +672,17 @@ const Sales = () => {
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-gray-400">
-                        Subtotal: ${subtotal?.toFixed(2)}
-                      </p>
-                      <p className="text-gray-400">
-                        Discount: -${watchedDiscount?.toFixed(2)}
-                      </p>
                       <p className="text-white font-bold text-lg">
-                        Total: ${total?.toFixed(2)}
+                        Estimated Total: ${estimatedTotal?.toFixed(2)}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        Final pricing is calculated by the server.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
@@ -674,7 +719,7 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -682,6 +727,7 @@ const Sales = () => {
                 </h3>
                 <button
                   onClick={() => setSelectedSale(null)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
@@ -690,7 +736,7 @@ const Sales = () => {
 
               <div className="space-y-6">
                 {/* Sale Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-gray-400 text-sm">Sale Number</p>
                     <p className="text-white font-mono">
@@ -700,16 +746,12 @@ const Sales = () => {
                   <div>
                     <p className="text-gray-400 text-sm">Date</p>
                     <p className="text-white">
-                      {new Date(selectedSale.saleDate).toLocaleString()}
+                      {new Date(selectedSale.createdAt).toLocaleString()}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Customer</p>
-                    <p className="text-white">
-                      {selectedSale.memberName ||
-                        selectedSale.customerName ||
-                        "Walk-in"}
-                    </p>
+                    <p className="text-white">{selectedSale.memberName}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Payment Method</p>
@@ -744,7 +786,7 @@ const Sales = () => {
                           </p>
                         </div>
                         <p className="text-white font-medium">
-                          ${item.totalPrice?.toFixed(2)}
+                          ${item.subtotal?.toFixed(2)}
                         </p>
                       </div>
                     ))}
@@ -758,12 +800,15 @@ const Sales = () => {
                       <span>Subtotal:</span>
                       <span>${selectedSale.subtotal?.toFixed(2)}</span>
                     </div>
-                    {selectedSale.discount > 0 && (
-                      <div className="flex justify-between text-green-500">
-                        <span>Discount:</span>
-                        <span>-${selectedSale.discount?.toFixed(2)}</span>
-                      </div>
-                    )}
+                    {selectedSale.discount &&
+                      selectedSale.discount.amount > 0 && (
+                        <div className="flex justify-between text-green-500">
+                          <span>Discount:</span>
+                          <span>
+                            -${selectedSale.discount.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
                     <div className="flex justify-between text-white font-bold text-lg border-t border-gray-700 pt-2">
                       <span>Total:</span>
                       <span>${selectedSale.total?.toFixed(2)}</span>
@@ -803,7 +848,7 @@ const Sales = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -811,13 +856,14 @@ const Sales = () => {
                 </h3>
                 <button
                   onClick={() => setShowReportModal(false)}
+                  aria-label="Close"
                   className="text-gray-400 hover:text-white"
                 >
                   <FaTimes />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Start Date
@@ -855,7 +901,7 @@ const Sales = () => {
               {salesReport && (
                 <div className="space-y-6">
                   {/* Report Stats */}
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card-dark p-4">
                       <p className="text-gray-400 text-sm">Total Sales</p>
                       <p className="text-2xl font-bold text-white">

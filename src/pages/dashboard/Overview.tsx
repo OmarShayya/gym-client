@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import {
   FaUsers,
   FaDollarSign,
@@ -18,9 +19,12 @@ import { membersApi } from "../../api/members.api";
 import { dayPassesApi } from "../../api/dayPasses.api";
 import { checkInsApi } from "../../api/checkins.api";
 import { salesApi } from "../../api/sales.api";
+import { getErrorMessage } from "../../api/client";
+import ExpiringSoon from "../../components/ExpiringSoon";
 
 const Overview = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrCode, setQrCode] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
@@ -83,11 +87,10 @@ const Overview = () => {
       await checkInsApi.checkInByQr(qrCode);
       setShowQRModal(false);
       setQrCode("");
-      // You might want to show a success message here
-      // and refresh the check-ins data
+      queryClient.invalidateQueries({ queryKey: ["checkIns"] });
+      toast.success("Check-in successful");
     } catch (error) {
-      console.error("Check-in failed:", error);
-      // You might want to show an error message here
+      toast.error(getErrorMessage(error));
     } finally {
       setQrLoading(false);
     }
@@ -112,12 +115,14 @@ const Overview = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card-dark p-6 relative overflow-hidden"
+      className="card-dark p-4 sm:p-6 relative overflow-hidden"
     >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-400 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-white mt-1">{value}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
+            {value}
+          </p>
           {trend && trendValue && (
             <div
               className={`flex items-center mt-2 text-sm ${
@@ -152,7 +157,7 @@ const Overview = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-display text-white mb-2">
+        <h1 className="text-2xl sm:text-3xl font-display text-white mb-2">
           Dashboard Overview
         </h1>
         <p className="text-gray-400">
@@ -161,7 +166,7 @@ const Overview = () => {
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard
           title="Total Members"
           value={stats.totalMembers}
@@ -196,7 +201,7 @@ const Overview = () => {
       </div>
 
       {/* Day Pass Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatCard
           title="Total Day Passes"
           value={stats.totalDayPasses}
@@ -343,6 +348,9 @@ const Overview = () => {
         </motion.div>
       </div>
 
+      {/* Expiring Memberships */}
+      <ExpiringSoon days={7} />
+
       {/* QR Code Check-in Modal */}
       {showQRModal && (
         <motion.div
@@ -356,7 +364,7 @@ const Overview = () => {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4"
+            className="bg-gray-800 p-4 sm:p-6 rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -365,6 +373,7 @@ const Overview = () => {
               </h3>
               <button
                 onClick={() => setShowQRModal(false)}
+                aria-label="Close QR check-in dialog"
                 className="text-gray-400 hover:text-white"
               >
                 <FaTimes />
@@ -386,7 +395,7 @@ const Overview = () => {
                 />
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
                 <button
                   onClick={() => setShowQRModal(false)}
                   className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
@@ -413,7 +422,7 @@ const Overview = () => {
         className="card-dark p-6"
       >
         <h3 className="text-xl font-semibold text-white mb-4">System Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
               <div className="w-6 h-6 bg-green-500 rounded-full animate-pulse" />

@@ -179,10 +179,12 @@ const DashboardLayout = () => {
       <div className="flex-1 lg:ml-64">
         {/* Top Bar */}
         <header className="bg-gray-900/90 backdrop-blur-md border-b border-gray-700 sticky top-0 z-40">
-          <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4">
             {/* Mobile Menu Button */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+              aria-expanded={sidebarOpen}
               className="lg:hidden text-primary-500 p-2 hover:bg-gray-800 rounded-lg transition-colors"
             >
               {sidebarOpen ? (
@@ -230,7 +232,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6 lg:p-8">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 20 }}

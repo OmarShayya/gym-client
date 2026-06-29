@@ -18,7 +18,10 @@ import {
   FaEye,
   FaImages,
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 import { productsApi, type ProductResponseDto } from "../../api/products.api";
+import { getErrorMessage } from "../../api/client";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const createProductSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -71,6 +74,8 @@ const Products = () => {
   >("all");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [productToDelete, setProductToDelete] =
+    useState<ProductResponseDto | null>(null);
   const queryClient = useQueryClient();
 
   // Queries
@@ -164,7 +169,9 @@ const Products = () => {
       reset();
       setSelectedImage(null);
       setImagePreview("");
+      toast.success("Product created");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const updateMutation = useMutation({
@@ -196,14 +203,19 @@ const Products = () => {
       reset();
       setSelectedImage(null);
       setImagePreview("");
+      toast.success("Product updated");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: productsApi.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      setProductToDelete(null);
+      toast.success("Product deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   // Form
@@ -252,9 +264,9 @@ const Products = () => {
     }
   };
 
-  const handleDeleteProduct = (product: ProductResponseDto) => {
-    if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
-      deleteMutation.mutate(product.id);
+  const confirmDeleteProduct = () => {
+    if (productToDelete) {
+      deleteMutation.mutate(productToDelete.id);
     }
   };
 
@@ -345,9 +357,9 @@ const Products = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-display text-white">
+          <h1 className="text-2xl sm:text-3xl font-display text-white">
             Products Management
           </h1>
           <p className="text-gray-400">
@@ -358,7 +370,7 @@ const Products = () => {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowCreateModal(true)}
-          className="relative z-10 flex items-center space-x-2 px-6 py-3 bg-primary-500 text-black font-bold rounded-lg hover:bg-primary-400 transition-all cursor-pointer select-none"
+          className="relative z-10 w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-primary-500 text-black font-bold rounded-lg hover:bg-primary-400 transition-all cursor-pointer select-none"
           style={{ userSelect: "none" }}
         >
           <FaPlus className="pointer-events-none" />
@@ -367,7 +379,7 @@ const Products = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           {
             label: "Total Products",
@@ -399,7 +411,9 @@ const Products = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-white">
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg bg-${stat.color}-500/20`}>
                 <stat.icon className={`text-${stat.color}-500 text-xl`} />
@@ -429,7 +443,7 @@ const Products = () => {
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer"
+          className="w-full sm:w-auto px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer"
         >
           <option value="">All Categories</option>
           {categories.map((category) => (
@@ -440,7 +454,7 @@ const Products = () => {
         </select>
 
         {/* Status Filter */}
-        <div className="flex space-x-2 flex-shrink-0">
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
           {[
             { key: "all", label: "All" },
             { key: "active", label: "Active" },
@@ -487,7 +501,7 @@ const Products = () => {
             No products found matching your criteria.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
             {products.map((product) => (
               <motion.div
                 key={product.id}
@@ -539,8 +553,8 @@ const Products = () => {
                     {product.description}
                   </p>
 
-                  <div className="flex justify-between items-center">
-                    <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="min-w-0">
                       <p className="text-primary-500 font-bold">
                         ${product.finalPrice || product.price}
                       </p>
@@ -551,11 +565,11 @@ const Products = () => {
                           </p>
                         )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right min-w-0">
                       <p className="text-white text-sm">
                         Stock: {product.stock}
                       </p>
-                      <p className="text-gray-400 text-xs">
+                      <p className="text-gray-400 text-xs truncate">
                         SKU: {product.sku}
                       </p>
                     </div>
@@ -586,6 +600,7 @@ const Products = () => {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedProduct(product)}
+                      aria-label={`View ${product.name}`}
                       className="relative z-10 flex-1 p-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30 transition-all cursor-pointer select-none"
                       style={{ userSelect: "none" }}
                     >
@@ -595,6 +610,7 @@ const Products = () => {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleEditProduct(product)}
+                      aria-label={`Edit ${product.name}`}
                       className="relative z-10 flex-1 p-2 bg-yellow-500/20 text-yellow-500 rounded hover:bg-yellow-500/30 transition-all cursor-pointer select-none"
                       style={{ userSelect: "none" }}
                     >
@@ -603,7 +619,8 @@ const Products = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDeleteProduct(product)}
+                      onClick={() => setProductToDelete(product)}
+                      aria-label={`Delete ${product.name}`}
                       className="relative z-10 flex-1 p-2 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30 transition-all cursor-pointer select-none"
                       style={{ userSelect: "none" }}
                     >
@@ -630,7 +647,7 @@ const Products = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -644,6 +661,7 @@ const Products = () => {
                   }}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close"
                   className="relative z-10 text-gray-400 hover:text-white cursor-pointer select-none"
                   style={{ userSelect: "none" }}
                 >
@@ -662,8 +680,8 @@ const Products = () => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Product Image
                   </label>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                       {imagePreview ? (
                         <img
                           src={imagePreview}
@@ -908,7 +926,7 @@ const Products = () => {
                 </div>
 
                 {/* Form Actions */}
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <motion.button
                     type="button"
                     onClick={() => {
@@ -961,7 +979,7 @@ const Products = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto"
+              className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">
@@ -971,6 +989,7 @@ const Products = () => {
                   onClick={() => setSelectedProduct(null)}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  aria-label="Close"
                   className="relative z-10 text-gray-400 hover:text-white cursor-pointer select-none"
                   style={{ userSelect: "none" }}
                 >
@@ -991,7 +1010,7 @@ const Products = () => {
                 )}
 
                 {/* Product Info Grid */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-400">Name</p>
                     <p className="text-white font-medium">
@@ -1072,7 +1091,7 @@ const Products = () => {
                 )}
 
                 {/* Actions */}
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <motion.button
                     onClick={() => handleEditProduct(selectedProduct)}
                     whileHover={{ scale: 1.02 }}
@@ -1097,6 +1116,21 @@ const Products = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={!!productToDelete}
+        title="Delete Product"
+        message={
+          productToDelete
+            ? `Are you sure you want to delete "${productToDelete.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={confirmDeleteProduct}
+        onCancel={() => setProductToDelete(null)}
+      />
     </div>
   );
 };

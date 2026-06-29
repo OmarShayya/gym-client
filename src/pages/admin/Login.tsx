@@ -96,7 +96,9 @@ const AdminLoginPage = () => {
               </div>
             </motion.div>
             <div>
-              <h1 className="text-3xl font-display text-white">270° FITNESS</h1>
+              <h1 className="text-2xl sm:text-3xl font-display text-white">
+                270° FITNESS
+              </h1>
               <p className="text-xs text-primary-500/80 uppercase tracking-wider">
                 Admin Portal
               </p>
@@ -143,14 +145,14 @@ const AdminLoginPage = () => {
           {/* Glass morphism card content */}
           <div
             className="relative bg-gray-950/95 backdrop-blur-2xl backdrop-saturate-[1.8] 
-                          border border-white/[0.05] rounded-2xl p-8 shadow-2xl
+                          border border-white/[0.05] rounded-2xl p-6 sm:p-8 shadow-2xl
                           before:absolute before:inset-0 before:rounded-2xl
                           before:bg-gradient-to-br before:from-white/[0.03] before:to-transparent
                           before:pointer-events-none"
           >
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-primary-500/[0.02] via-transparent to-primary-500/[0.02] pointer-events-none" />
 
-            <h2 className="text-3xl font-display text-center mb-2 relative z-10">
+            <h2 className="text-3xl sm:text-4xl font-display text-center mb-2 relative z-10">
               ADMIN LOGIN
             </h2>
             <p className="text-gray-400 text-center mb-8 relative z-10">
@@ -207,6 +209,7 @@ const AdminLoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary-500 transition-colors"
                   >
                     {showPassword ? (
